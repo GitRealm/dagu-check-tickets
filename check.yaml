@@ -22,6 +22,9 @@ inputs:
   repo:
     description: 'GitHub repo name'
     required: true
+  token:
+    description: 'Base ref used to generate the base line for the check'
+    required: true
 outputs:
   result:
     description: 'result from the execution of the script'
