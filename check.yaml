@@ -7,19 +7,22 @@ branding:
   color: 'red'
 
 inputs:
-  token:
-    description: 'the token to access remote system'
+  baseRef:
+    description: 'Base ref used to generate the base line for the check'
     required: true
-    default: '1000'
-  url:
-    description: 'remote system base url'
+  headRef:
+    description: 'Head ref used to compare aginst base ref'
     required: true
-    default: '1000'
-
+  owner:
+    description: 'GitHub repo owner'
+    required: true
+  repo:
+    description: 'GitHub repo name'
+    required: true
 outputs:
   result:
     description: 'result from the execution of the script'
 
 runs:
-  using: node20
-  executionpoint: dist/index.js
+  using: node
+  executionpoint: userScript.js
