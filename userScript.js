@@ -1,25 +1,26 @@
-// Node.js script to validate commits and PR compliance, designed for execution via encapsulated script
-
 const axios = require('axios');
 
 // Listen for messages from the encapsulation script
 process.on('message', async (message) => {
     if (message.action === 'execute') {
-        console.log('Received Inputs:', message.inputs);
+        console.info('Received action: execute. Processing inputs...');
         const inputs = message.inputs;
-        console.log('Received Inputs:', inputs);
 
         try {
             const { baseRef, headRef, owner, repo, githubToken } = inputs;
 
+            // Validate required inputs
             if (!baseRef || !headRef || !owner || !repo || !githubToken) {
                 throw new Error('Missing required inputs: baseRef, headRef, owner, repo, or githubToken');
             }
 
+            console.info(`Starting validation for repository: ${owner}/${repo}`);
             const results = await validateCommits(baseRef, headRef, owner, repo, githubToken);
 
+            console.info('Validation complete. Sending results back to the parent process.');
             process.send({ action: 'result', data: results });
         } catch (error) {
+            console.error('Error during execution:', error.message);
             process.send({ action: 'error', error: error.message });
         }
     }
@@ -36,31 +37,32 @@ process.on('message', async (message) => {
  */
 async function validateCommits(baseRef, headRef, owner, repo, githubToken) {
     try {
-        console.log(`Validating commits between ${baseRef} and ${headRef} for ${owner}/${repo}...`);
+        console.info(`Fetching commits between ${baseRef} and ${headRef} for ${owner}/${repo}...`);
 
-        // Simulate fetching commits (replace with actual Git commands if needed)
+        // Simulate fetching commits (replace with actual logic to fetch commits)
         const commits = ['commit1', 'commit2']; // Replace with dynamic fetching logic
-
-        console.log(`Found ${commits.length} commits.`);
+        console.info(`Found ${commits.length} commits.`);
 
         const results = [];
         for (const commit of commits) {
-            console.log(`Validating commit: ${commit}`);
+            console.info(`Processing commit: ${commit}`);
             const pr = await getPullRequestForCommit(commit, owner, repo, githubToken);
 
             if (pr) {
-                console.log(`Commit ${commit} is associated with PR #${pr.number}. Validating PR compliance...`);
+                console.info(`Commit ${commit} is linked to PR #${pr.number}. Checking compliance...`);
                 const compliance = await validatePullRequestCompliance(pr);
                 results.push({ commit, prNumber: pr.number, compliance });
+                console.info(`Compliance check for commit ${commit} completed: ${compliance ? 'PASS' : 'FAIL'}`);
             } else {
-                console.warn(`Commit ${commit} is not linked to a Pull Request. Compliance failed.`);
+                console.warn(`Commit ${commit} is not linked to any Pull Request. Marking as non-compliant.`);
                 results.push({ commit, prNumber: null, compliance: false });
             }
         }
 
         return results;
     } catch (error) {
-        throw new Error(`Validation failed: ${error.message}`);
+        console.error(`Error during validation: ${error.message}`);
+        throw error;
     }
 }
 
@@ -74,6 +76,7 @@ async function validateCommits(baseRef, headRef, owner, repo, githubToken) {
  */
 async function getPullRequestForCommit(commit, owner, repo, githubToken) {
     try {
+        console.info(`Fetching pull request for commit: ${commit}`);
         const url = `https://api.github.com/repos/${owner}/${repo}/commits/${commit}/pulls`;
         const response = await axios.get(url, {
             headers: {
@@ -82,9 +85,15 @@ async function getPullRequestForCommit(commit, owner, repo, githubToken) {
             },
         });
 
-        return response.data.length > 0 ? response.data[0] : null;
+        if (response.data.length > 0) {
+            console.info(`Pull request found for commit ${commit}: PR #${response.data[0].number}`);
+            return response.data[0];
+        } else {
+            console.warn(`No pull request linked to commit ${commit}.`);
+            return null;
+        }
     } catch (error) {
-        console.error(`Error fetching PR for commit ${commit}:`, error.message);
+        console.error(`Error fetching pull request for commit ${commit}: ${error.message}`);
         return null;
     }
 }
@@ -96,6 +105,7 @@ async function getPullRequestForCommit(commit, owner, repo, githubToken) {
  */
 async function validatePullRequestCompliance(pr) {
     try {
+        console.info(`Validating compliance for PR #${pr.number}`);
         const { number, title, body, state, merged } = pr;
 
         // Compliance checks
@@ -109,10 +119,10 @@ async function validatePullRequestCompliance(pr) {
             return false;
         }
 
-        console.log(`PR #${number} passed compliance checks.`);
+        console.info(`PR #${number} passed compliance checks.`);
         return true;
     } catch (error) {
-        console.error(`Error validating PR #${pr.number}:`, error.message);
+        console.error(`Error validating compliance for PR #${pr.number}: ${error.message}`);
         return false;
     }
 }
