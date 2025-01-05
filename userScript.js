@@ -6,16 +6,17 @@ process.on('message', async (message) => {
         console.info('Received action: execute. Processing inputs...');
         const inputs = message.inputs;
 
+        console.info('Processing inputs...', JSON.stringify(inputs));
         try {
-            const { baseRef, headRef, owner, repo, githubToken } = inputs;
+            const { baseRef, headRef, owner, repo, token } = inputs;
 
             // Validate required inputs
-            if (!baseRef || !headRef || !owner || !repo || !githubToken) {
-                throw new Error('Missing required inputs: baseRef, headRef, owner, repo, or githubToken');
+            if (!baseRef || !headRef || !owner || !repo || !token) {
+                throw new Error('Missing required inputs: baseRef, headRef, owner, repo, or token');
             }
 
             console.info(`Starting validation for repository: ${owner}/${repo}`);
-            const results = await validateCommits(baseRef, headRef, owner, repo, githubToken);
+            const results = await validateCommits(baseRef, headRef, owner, repo, token);
 
             console.info('Validation complete. Sending results back to the parent process.');
             process.send({ action: 'result', data: results });
@@ -39,8 +40,15 @@ async function validateCommits(baseRef, headRef, owner, repo, githubToken) {
     try {
         console.info(`Fetching commits between ${baseRef} and ${headRef} for ${owner}/${repo}...`);
 
-        // Simulate fetching commits (replace with actual logic to fetch commits)
-        const commits = ['commit1', 'commit2']; // Replace with dynamic fetching logic
+        const url = `https://api.github.com/repos/${owner}/${repo}/compare/${baseRef}...${headRef}`;
+        const response = await axios.get(url, {
+            headers: {
+                Authorization: `Bearer ${githubToken}`,
+                Accept: 'application/vnd.github.v3+json',
+            },
+        });
+
+        const commits = response.data.commits.map(commit => commit.sha);
         console.info(`Found ${commits.length} commits.`);
 
         const results = [];
